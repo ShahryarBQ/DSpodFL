@@ -1,7 +1,7 @@
 # DSpodFL
 Decentralized Sporadic Federated Learning: A Unified Methodology with Generalized Convergence Guarantees
 
-- ArXiv: [Decentralized Sporadic Federated Learning: A Unified Methodology with Generalized Convergence Guarantees (https://arxiv.org/abs/2402.03448)
+- ArXiv: [Decentralized Sporadic Federated Learning: A Unified Methodology with Generalized Convergence Guarantees](https://arxiv.org/abs/2402.03448)
 
 ## Citation
 ```
