@@ -9,22 +9,23 @@ import torch
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms, models
 
-from Custom_CNN import Custom_CNN
 from CNN import CNN
 
 
 def aux_info(dataset_name, model_name):
     # Determine the number of classes and number of channels for the desired dataset
     num_classes, num_channels = None, None
-    if dataset_name in ["MNIST", "FMNIST"]:
+    if dataset_name in ["MNIST", "FMNIST", "CIFAR10"]:
         num_classes = 10
-        num_channels = 1
-    elif dataset_name == "CIFAR10":
-        num_classes = 10
-        num_channels = 3
     elif dataset_name == "FEMNIST":
         num_classes = 62
+    elif dataset_name == "CIFAR100":
+        num_classes = 100
+
+    if dataset_name in ["MNIST, FMNIST", "FEMNIST"]:
         num_channels = 1
+    elif dataset_name in ["CIFAR10", "CIFAR100"]:
+        num_channels = 3
 
     # 1) Determine the appropriate pre-processing transform for the desired dataset
     transform = None
@@ -33,7 +34,7 @@ def aux_info(dataset_name, model_name):
             transforms.ToTensor(),
             transforms.Normalize((0.1307,), (0.3081,))
         ])
-    elif dataset_name == "CIFAR10":
+    elif dataset_name in ["CIFAR10", "CIFAR100"]:
         transform = transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
@@ -74,9 +75,12 @@ def dataset_info(dataset_name, transform):
     elif dataset_name == "FEMNIST":
         train_set = json_to_data(os.path.join(os.getcwd(), "../data/leaf/data/femnist/data/train"), transform)
         test_set = json_to_data(os.path.join(os.getcwd(), "../data/leaf/data/femnist/data/test"), transform)
-
         train_set = sample(train_set, int(0.1 * len(train_set)))
         test_set = sample(test_set, int(0.1 * len(test_set)))
+
+    elif dataset_name == "CIFAR100":
+        train_set = datasets.CIFAR100('../data', train=True, download=True, transform=transform)
+        test_set = datasets.CIFAR100('../data', train=False, download=True, transform=transform)
 
     input_dim = calculate_input_dim(train_set[0][0].shape)
     return list(train_set), list(test_set), input_dim
@@ -86,15 +90,16 @@ def model_info(model_name, input_dim, num_classes, num_channels):
     model, criterion = None, None
     if model_name == "SVM":
         model = torch.nn.Linear(input_dim, num_classes)
-        criterion = torch.nn.MultiMarginLoss()
     elif model_name == "CNN":
         model = CNN(num_classes, num_channels)
-        criterion = torch.nn.CrossEntropyLoss()
-    elif model_name == "Custom_CNN":
-        model = Custom_CNN(num_classes, num_channels)
-        criterion = torch.nn.CrossEntropyLoss()
     elif model_name == "VGG11":
         model = models.vgg11(weights='DEFAULT')
+    elif model_name == "ResNet18":
+        model = models.resnet18(weights='DEFAULT')
+
+    if model_name == "SVM":
+        criterion = torch.nn.MultiMarginLoss()
+    elif model_name in ["CNN", "VGG11", "ResNet18"]:
         criterion = torch.nn.CrossEntropyLoss()
 
     model_dim = calculate_model_dim(model.parameters())
@@ -116,7 +121,7 @@ def calculate_model_dim(model_params):
 
 
 def calculate_accuracy(model, test_set):
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
     model.eval()
     test_loader = DataLoader(
@@ -164,7 +169,7 @@ def generate_train_sets(train_set, num_agents, num_classes, labels_per_agent):
     total_data_splits_count = num_agents * labels_per_agent
     data_splits_per_class = total_data_splits_count // num_classes
     rem_classes = total_data_splits_count % num_classes
-    each_class_div = [data_splits_per_class for _ in range(total_data_splits_count - rem_classes)]
+    each_class_div = [data_splits_per_class for _ in range(num_classes - rem_classes)]
     each_class_div.extend([data_splits_per_class + 1 for _ in range(rem_classes)])
 
     each_class_div = sample(each_class_div, k=len(each_class_div))
@@ -183,7 +188,7 @@ def generate_train_sets(train_set, num_agents, num_classes, labels_per_agent):
         for j in range(labels_per_agent):
             chosen_splits.extend(choices(list(available_splits_temp.keys()),
                                          weights=list(available_splits_temp.values()), k=1))
-            del available_splits_temp[chosen_splits[-1]]
+            available_splits_temp[chosen_splits[-1]] -= 1
 
         for j in chosen_splits:
             separated[i].extend(data_splits[j][0])
@@ -216,7 +221,7 @@ def save_results(log, filepath):
 def determine_DandB(DandB, initial_prob_sgds, initial_prob_aggrs):
     D, B = DandB
     if D is None:
-        D = int(np.mean([1/ips for ips in initial_prob_sgds]))
+        D = int(np.mean([1 / ips for ips in initial_prob_sgds])) + 1
     if B is None:
-        B = int(np.mean([[1/ipa for ipa in row] for row in initial_prob_aggrs]))
+        B = int(np.mean([[1 / ipa for ipa in row] for row in initial_prob_aggrs])) + 1
     return (D, B)
