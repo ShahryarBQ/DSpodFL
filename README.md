@@ -15,6 +15,6 @@ Decentralized Sporadic Federated Learning: A Unified Algorithmic Framework with 
   title={Decentralized Sporadic Federated Learning: A Unified Methodology with Generalized Convergence Guarantees},
   author={Zehtabi, Shahryar and Han, Dong-Jun and Parasnis, Rohit and Hosseinalipour, Seyyedali and Brinton, Christopher G},
   journal={International Conference on Learning Representations (ICLR)},
-  year={2024}
+  year={2025}
 }
 ```
